@@ -150,6 +150,33 @@ The project follows:
 
 
 
+<h3>Sending Notification Automatically</h3>
+- Firstly you need to download and install rabbitmq. Also you have to update the .env file like the below
+
+```bash
+QUEUE_CONNECTION=rabbitmq
+
+RABBITMQ_HOST=127.0.0.1
+RABBITMQ_PORT=5672
+RABBITMQ_USER=admin
+RABBITMQ_PASSWORD=admin123
+RABBITMQ_VHOST=/
+RABBITMQ_QUEUE=notifications
+```
+
+- After that you need to start the rabbitmq server.
+- After this open a new terminal and run
+
+```bash
+php artisan queue:work rabbitmq --queue=notifications --tries=3 --sleep=3 -vvv
+```
+
+- In another terminal
+```bash
+php artisan schedule:work
+```
+
+
 
 
 
