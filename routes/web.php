@@ -29,22 +29,31 @@ Route::get('/test-mail', function () {
 
 
 
-// Route::get('/db-test', function () {
-//     try {
-//         $count = \App\Models\User::count();
-//         return response()->json([
-//             'success' => true,
-//             'user_count' => $count
-//         ]);
-//     } catch (\Exception $e) {
-//         return response()->json([
-//             'success' => false,
-//             'error' => $e->getMessage()
-//         ]);
-//     }
-// });
-
-// Route::get('/users-simple', function () {
-//     $users = \App\Models\User::all();
-//     return $users;
-// });
+Route::get('/test-rabbitmq', function() {
+    try {
+        $queue = app('queue')->connection('rabbitmq');
+        
+        // Try to get queue size
+        $queueName = config('queue.connections.rabbitmq.queue');
+        
+        return response()->json([
+            'status' => '✅ SUCCESS',
+            'message' => 'RabbitMQ connected successfully!',
+            'queue_driver' => config('queue.default'),
+            'rabbitmq_config' => [
+                'host' => config('queue.connections.rabbitmq.hosts.0.host'),
+                'port' => config('queue.connections.rabbitmq.hosts.0.port'),
+                'user' => config('queue.connections.rabbitmq.hosts.0.user'),
+                'queue' => $queueName,
+            ],
+            'management_ui' => 'http://localhost:15672',
+            'credentials' => 'admin / admin123'
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => '❌ ERROR',
+            'message' => $e->getMessage(),
+            'trace' => explode("\n", $e->getTraceAsString())
+        ], 500);
+    }
+});
