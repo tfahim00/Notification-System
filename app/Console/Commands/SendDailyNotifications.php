@@ -3,8 +3,9 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
-use App\Services\Notifications\NotificationManager;
+use App\Jobs\SendNotificationJob;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 class SendDailyNotifications extends Command
 {
@@ -20,38 +21,41 @@ class SendDailyNotifications extends Command
      *
      * @var string
      */
-    protected $description = 'Send daily notifications to all notification receivers';
-
-    private NotificationManager $notificationManager;
-
-    public function __construct(NotificationManager $notificationManager)
-    {
-        parent::__construct();
-        $this->notificationManager = $notificationManager;
-    }
+    protected $description = 'Queue daily notifications for all users via RabbitMQ';
 
     /**
      * Execute the console command.
      */
     public function handle()
     {
-        $this->info('Starting daily notifications...');
+        $this->info('🐰 Starting daily notifications via RabbitMQ...');
+        
+        Log::info('[Scheduled] Starting daily notifications');
 
         $users = User::all();
-        $successCount = 0;
+        $queuedCount = 0;
 
         foreach ($users as $user) {
-            $message = "Daily reminder for {$user->username} - Position: {$user->position}";
-            
-            $result = $this->notificationManager->send('email', $user, $message);
-            
-            if ($result) {
-                $successCount++;
+            try {
+                $message = "Daily reminder for {$user->username} - Position: {$user->position}";
+                
+                // Dispatch to RabbitMQ queue instead of sending immediately
+                SendNotificationJob::dispatch($user->id, $message, 'email');
+                
+                $queuedCount++;
+                
+                $this->info("✓ Queued notification for {$user->username}");
+                
+            } catch (\Exception $e) {
+                $this->error("✗ Failed to queue for {$user->username}: {$e->getMessage()}");
+                Log::error("[Scheduled] Failed to queue for user {$user->id}: {$e->getMessage()}");
             }
         }
 
-        $this->info("Sent {$successCount}/{$users->count()} notifications successfully");
+        $this->info("🎉 Queued {$queuedCount}/{$users->count()} notifications successfully");
         
+        Log::info("[Scheduled] Queued {$queuedCount} notifications in RabbitMQ");
+
         return Command::SUCCESS;
     }
 }
