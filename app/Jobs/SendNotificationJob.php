@@ -35,7 +35,7 @@ class SendNotificationJob implements ShouldQueue
         try {
             $user = User::findOrFail($this->userId);
             
-            Log::info("🐰 [RabbitMQ] Processing notification for user {$this->userId} via {$this->channel}");
+            Log::info("[RabbitMQ] Processing notification for user {$this->userId} via {$this->channel}");
             
             $result = $notificationManager->send(
                 $this->channel,
@@ -46,8 +46,9 @@ class SendNotificationJob implements ShouldQueue
             if (!$result) {
                 throw new \Exception("Notification failed for user {$this->userId}");
             }
-
             Log::info("✅ [RabbitMQ] Notification sent successfully to user {$this->userId}");
+            $user->notification_received = true;
+            $user->save();
 
         } catch (\Exception $e) {
             Log::error("❌ [RabbitMQ] Job failed for user {$this->userId}: " . $e->getMessage());
